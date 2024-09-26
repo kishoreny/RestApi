@@ -21,9 +21,9 @@ import java.net.URI;
 import java.util.List;
 
 //todo is the slash necessary?
-@Path("/messages")
-@Consumes(MediaType.APPLICATION_JSON)
-@Produces(MediaType.APPLICATION_JSON)
+@Path( "/messages" )
+@Consumes( MediaType.APPLICATION_JSON )
+@Produces( MediaType.APPLICATION_JSON )
 public class MessageResource
 {
     MessageService messageService = new MessageService();
@@ -50,10 +50,44 @@ public class MessageResource
     }
 
     @GET
-    @Path("/{messageId}")
-    public Message getMessage( @PathParam("messageId") long messageId )
+    @Path( "/{messageId}" )
+    public Message getMessage( @PathParam( "messageId" ) long messageId,
+                               @Context UriInfo uriInfo )
     {
-        return messageService.getMessage( messageId );
+        Message message = messageService.getMessage( messageId );
+        message.addLink( getUriForSelf( uriInfo, message ), "self" );
+        message.addLink( getUriForProfile( uriInfo, message ), "profile" );
+        message.addLink( getUriForComments( uriInfo, message ), "comments" );
+        return message;
+    }
+
+    private String getUriForComments( UriInfo uriInfo, Message message )
+    {
+        return uriInfo.getBaseUriBuilder() // http://localhost:8080/webapi/
+                .path( MessageResource.class ) // /messages
+                .path( MessageResource.class, "getCommentResource" )  // /{messageId}/comments
+                .path( CommentResource.class )
+                .resolveTemplate( "messageId", message.getId() ) //replace messageId in uri with message.getId()
+                .build()
+                .toString();
+    }
+
+    private String getUriForProfile( UriInfo uriInfo, Message message )
+    {
+        return uriInfo.getBaseUriBuilder() // http://localhost:8080/webapi/
+                .path( ProfileResource.class ) // /profiles
+                .path( message.getAuthor() ) // /{authorName}
+                .build()
+                .toString();
+    }
+
+    private String getUriForSelf( UriInfo uriInfo, Message message )
+    {
+        return uriInfo.getBaseUriBuilder() // http://localhost:8080/webapi/
+                .path( MessageResource.class ) // /messages
+                .path( Long.toString( message.getId() ) ) // /{messageId}
+                .build()
+                .toString();
     }
 
     @POST
